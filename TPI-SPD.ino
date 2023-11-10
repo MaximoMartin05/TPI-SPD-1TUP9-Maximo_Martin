@@ -2,7 +2,7 @@
 
 LiquidCrystal lcd_1(8, 9, 4, 5, 6, 7);
 
-// FRECUENCIAS ANALOGICAS:
+// VALORES ANALOGICAS:
 // SELECT (640 A 668)
 // UP (99 A 127)
 // DOWN (255 A 280)
