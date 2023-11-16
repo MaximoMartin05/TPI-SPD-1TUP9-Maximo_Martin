@@ -83,6 +83,7 @@ int contadorMins = 0;
 int contadorHs = 0;
 int hrI;
 int minI;
+int botonAnalo;
 
 //VARIABLES PARA EL RELE
 const int rele = 13;
@@ -97,7 +98,7 @@ void setup() {
   lcd_1.createChar(2, customChar_C); //Tercera matriz
   lcd_1.createChar(3, customChar_D); //Cuarta matriz
   lcd_1.createChar(4, customChar_E); //Quinta matriz
-  lcd_1.clear();
+  
   //Pines Rele
   pinMode(rele, OUTPUT);
 }
@@ -106,6 +107,9 @@ void setup() {
 void loop() {
   tiempo_actual = millis();
   delta_tiempo = tiempo_actual - tiempo_anterior;
+  
+  botonAnalo = analogRead(A0);
+  
   
    if (Serial.available() != 0) {
     int option = Serial.parseInt();
@@ -118,7 +122,11 @@ void loop() {
               
         	}
         	hrI = Serial.parseInt();
-        	contadorHs = hrI;
+        	if (hrI < 0 || hrI > 23){
+        		Serial.println("Error no se aceptan valores negativos o mayores de 23");
+            }else{
+            	contadorHs = hrI;	
+            }
         	break;
         case 2:
         	Serial.println("Ingrese los minutos: ");
@@ -126,7 +134,11 @@ void loop() {
               
         	}
         	minI = Serial.parseInt();
-        	contadorMins = minI;
+            if (minI < 0 || minI > 59){
+				Serial.println("Error no se aceptan valores negativos o mayores de 59");
+            }else{
+            	contadorMins = minI;
+            }
         	break;
       }
     }
@@ -146,10 +158,29 @@ void loop() {
     }
   }
   
+  if (contadorSegs > 59) {
+    contadorMins++;
+  	contadorSegs = 0; 
+  }
+  
+  if (contadorMins > 59) {
+    contadorHs++;
+    contadorSegs= 0;
+  	contadorMins = 0;
+  }
+  
+  if (contadorHs > 23) {
+  	contadorHs = 0;
+    contadorMins = 0;
+  }
+  
+  
+  String boton = botones_LCD(int botonAnalo);
+  
   
   // para que el contador no se exceda de 60
   // BOTON UP
-  if (analogRead(A0) >= 99 && analogRad(A0) <= 127){
+  if (boton == "btnArriba"){
     if (contador < 60){
           lcd_1.clear();
           contador++;
@@ -161,12 +192,10 @@ void loop() {
           mostrarHora = HIGH;
         }
   }
-  lastButtonState_asc  = estado_pulsador_asc;
-  
   
   // Control para no ingresar numeros negativos
   // BOTON DOWN
-  if (analogRead(A0) >= 255 && analogRad(A0) <= 280){
+  if (boton == "btnAbajo"){
     if (contador >= 1){
           lcd_1.clear();
           contador--;
@@ -182,7 +211,7 @@ void loop() {
   
   // para no setear con un valor negativo o 0
   // BOTON SELECT
-  if (analogRead(A0) >= 640 && analogRad(A0) <= 668){
+  if (boton == "btnSelect"){
     if (contador > 0){
           contador2 = 0;
           calculo_tiempoSeg = contador * 60;
@@ -198,9 +227,15 @@ void loop() {
   }
   
   // Para eliminar el intevalo BOTON RIGHT
-  if (analogRead(A0) >= 0 && analogRad(A0) <= 60){
+  if (boton == "btnDerecha"){
       calculo_tiempoSeg = 0;
     }
+  //LEFT(399 A 435)
+  if (boton == "btnIzquierda"){
+  	digitalWrite(rele, HIGH);
+    espera();
+    digitalWrite(rele, LOW);
+  }
   
   if (delta_tiempo >= 1000){
   	contador2++;
@@ -208,22 +243,6 @@ void loop() {
     Serial.println(contador2);
     contadorSegs++;
     tiempo_anterior = tiempo_actual;
-  }
-  
-  if (contadorSegs > 59) {
-    contadorMins++;
-  	contadorSegs = 0; 
-  }
-  
-  if (contadorMins > 59) {
-    contadorHs++;
-    contadorSegs= 0;
-  	contadorMins = 0;
-  }
-  
-  if (contadorHs > 23) {
-  	contadorHs = 0;
-    contadorMins = 0;
   }
   
   if (contador2 == calculo_tiempoSeg){	
@@ -243,13 +262,31 @@ void loop() {
     lcd_1.print("SPRAY");
     lcd_1.setCursor(6,1);
     lcd_1.print("ACTIVADO");
-    digitalWrite(rele, LOW);
-    espera();
     digitalWrite(rele, HIGH);
+    espera();
+    digitalWrite(rele, LOW);
     lcd_1.clear();
   }
 }
 
 void espera(){
 	delay(900);
+}
+
+
+//Creamos una funcion que devuelva un texto de que boton se utilizo basandose en los rangos de los valores
+String botones_LCD(int buttonReply) {
+  String text;
+  Serial.println(buttonReply);
+  //if (buttonReply < 60) text = "btnDerecha";
+  if (buttonReply > 0 && buttonReply < 60) text = "btnDerecha";
+  //if (buttonReply > 99 && buttonReply < 127)text = "btnArriba";
+  if (buttonReply > 99 && buttonReply < 127) text = "btnArriba";
+  //if (buttonReply > 255 && buttonReply < 280)  text = "btnAbajo";
+  if (buttonReply > 255 && buttonReply < 280) text = "btnAbajo";
+  // if (buttonReply > 399 && buttonReply < 435)  text = "btnIzquierda";
+  if (buttonReply > 399 && buttonReply < 435) text = "btnIzquierda";
+  // if (buttonReply > 640 && buttonReply < 668)  text = "btnSelect";
+  if (buttonReply > 640 && buttonReply < 668) text = "btnSelect";
+  return text;
 }
